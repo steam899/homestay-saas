@@ -1,118 +1,129 @@
 import { supabase } from '@/utils/supabase'
 
-export const revalidate = 0 // Memastikan data sentiasa segar dari database
+export const revalidate = 0
 
 export default async function Home() {
-  // Mengambil senarai homestay dari Supabase
-  const { data: properties, error } = await supabase
+  const { data: properties } = await supabase
     .from('properties')
     .select('*')
     .order('created_at', { ascending: false })
 
   return (
-    <div style={{ 
-      backgroundColor: '#f1f5f9', 
-      minHeight: '100vh', 
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-      paddingBottom: '60px'
-    }}>
-      {/* Header / Navbar Simpel */}
-      <header style={{ 
-        backgroundColor: '#ffffff', 
-        padding: '20px', 
-        textAlign: 'center', 
+    <div style={{ backgroundColor: '#f8fafc', minHeight: '100vh', fontFamily: 'sans-serif' }}>
+      
+      {/* HEADER / NAVIGATION */}
+      <nav style={{ 
+        backgroundColor: '#fff', 
+        padding: '12px 20px', 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
         borderBottom: '1px solid #e2e8f0',
         position: 'sticky',
         top: 0,
-        zIndex: 50
+        zIndex: 100
       }}>
-        <h1 style={{ color: '#1e40af', fontSize: '24px', margin: 0, fontWeight: '800' }}>HOMESTAY KU 🏠</h1>
-        <p style={{ color: '#64748b', fontSize: '13px', marginTop: '4px' }}>Tempahan mudah & pantas secara online</p>
-      </header>
+        <div style={{ fontWeight: '900', color: '#1e40af', fontSize: '18px' }}>
+          HOMESTAY KU
+        </div>
 
-      {/* Main Content */}
-      <main style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
-        
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {/* Butang ke Admin */}
+          <a href="/admin" style={{
+            textDecoration: 'none',
+            fontSize: '13px',
+            color: '#475569',
+            padding: '8px 12px',
+            borderRadius: '10px',
+            border: '1px solid #e2e8f0',
+            fontWeight: '600'
+          }}>
+            Admin
+          </a>
+
+          {/* Butang Login User (Simpan dulu fungsinya) */}
+          <button style={{
+            backgroundColor: '#1e40af',
+            color: '#fff',
+            fontSize: '13px',
+            padding: '8px 12px',
+            borderRadius: '10px',
+            border: 'none',
+            fontWeight: '600'
+          }}>
+            Login Gmail
+          </button>
+        </div>
+      </nav>
+
+      {/* HERO SECTION */}
+      <div style={{ padding: '30px 20px', textAlign: 'center' }}>
+        <h1 style={{ fontSize: '24px', color: '#1e293b', margin: 0 }}>Cari Penginapan Selesa</h1>
+        <p style={{ color: '#64748b', fontSize: '14px', marginTop: '5px' }}>Tempah homestay terbaik di seluruh Malaysia</p>
+      </div>
+
+      {/* LISTING SECTION */}
+      <main style={{ padding: '0 20px 50px 20px', maxWidth: '600px', margin: '0 auto' }}>
         <div style={{ display: 'grid', gap: '25px' }}>
           {properties?.map((item) => (
             <div key={item.id} style={{ 
               backgroundColor: '#fff', 
               borderRadius: '24px', 
               overflow: 'hidden', 
-              boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)',
-              border: '1px solid #ffffff'
+              boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)',
+              border: '1px solid #f1f5f9'
             }}>
               
-              {/* Gambar Homestay */}
-              <div style={{ position: 'relative', height: '230px', width: '100%', backgroundColor: '#cbd5e1' }}>
+              {/* Image */}
+              <div style={{ height: '220px', width: '100%', backgroundColor: '#e2e8f0' }}>
                 {item.image_url ? (
-                  <img 
-                    src={item.image_url} 
-                    alt={item.name} 
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                  />
+                  <img src={item.image_url} alt={item.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#64748b' }}>
-                    Gambar tidak tersedia
-                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#94a3b8' }}>Tiada Gambar</div>
                 )}
-                <div style={{ 
-                  position: 'absolute', 
-                  bottom: '15px', 
-                  right: '15px', 
-                  backgroundColor: 'rgba(255,255,255,0.9)', 
-                  padding: '5px 12px', 
-                  borderRadius: '10px',
-                  fontWeight: 'bold',
-                  fontSize: '14px',
-                  color: '#1e40af'
-                }}>
-                  RM{item.price_per_night}/mlm
-                </div>
               </div>
 
-              {/* Info Homestay */}
+              {/* Details */}
               <div style={{ padding: '20px' }}>
-                <h2 style={{ fontSize: '20px', color: '#1e293b', margin: '0 0 8px 0', fontWeight: '700' }}>{item.name}</h2>
-                <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  📍 {item.location}
-                </p>
+                <h2 style={{ fontSize: '18px', color: '#1e293b', margin: '0 0 5px 0' }}>{item.name}</h2>
+                <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '15px' }}>📍 {item.location}</p>
                 
-                {/* Butang ke Borang Booking */}
-                <a 
-                  href={`/book/${item.id}`} 
-                  style={{ 
-                    display: 'block',
-                    textAlign: 'center',
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center', 
+                  borderTop: '1px solid #f1f5f9',
+                  paddingTop: '15px'
+                }}>
+                  <div>
+                    <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#2563eb' }}>RM{item.price_per_night}</span>
+                    <small style={{ color: '#64748b' }}>/malam</small>
+                  </div>
+                  
+                  <a href={`/book/${item.id}`} style={{ 
                     backgroundColor: '#2563eb', 
                     color: '#fff', 
-                    padding: '16px', 
-                    borderRadius: '16px', 
+                    padding: '12px 20px', 
+                    borderRadius: '12px', 
                     textDecoration: 'none',
-                    fontSize: '16px',
-                    fontWeight: 'bold',
-                    boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.2)',
-                    transition: '0.2s'
-                  }}
-                >
-                  Semak Tarikh & Tempah
-                </a>
+                    fontSize: '14px',
+                    fontWeight: 'bold'
+                  }}>
+                    Tempah
+                  </a>
+                </div>
               </div>
             </div>
           ))}
 
-          {/* Jika Database Kosong */}
           {(!properties || properties.length === 0) && (
-            <div style={{ textAlign: 'center', padding: '100px 20px', color: '#94a3b8' }}>
-              <div style={{ fontSize: '40px', marginBottom: '10px' }}>🍃</div>
-              <p>Maaf, tiada homestay yang aktif buat masa ini.</p>
-            </div>
+            <p style={{ textAlign: 'center', color: '#94a3b8', padding: '50px' }}>Tiada homestay tersedia.</p>
           )}
         </div>
       </main>
 
-      <footer style={{ textAlign: 'center', padding: '40px 20px', color: '#94a3b8', fontSize: '12px', letterSpacing: '1px' }}>
-        POWERED BY HOMESTAY SAAS v2.0
+      <footer style={{ textAlign: 'center', color: '#94a3b8', fontSize: '11px', padding: '20px' }}>
+        © 2024 Homestay SaaS • All Rights Reserved
       </footer>
     </div>
   )
