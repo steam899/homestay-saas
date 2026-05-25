@@ -5,23 +5,31 @@ import { supabase } from '@/utils/supabase'
 export default function AdminPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [passwordInput, setPasswordInput] = useState('')
+  const [activeTab, setActiveTab] = useState<'homestays' | 'bookings'>('homestays')
+  
+  // Data State
   const [properties, setProperties] = useState<any[]>([])
+  const [bookings, setBookings] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
 
-  // Form State
-  const [name, setName] = useState('')
-  const [location, setLocation] = useState('')
-  const [price, setPrice] = useState('')
-  const [imageUrl, setImageUrl] = useState('')
-  const [editId, setEditId] = useState<string | null>(null) // Untuk tahu tengah edit atau tambah baru
+  // Form State (Homestay)
+  const [name, setName] = useState(''); const [loc, setLoc] = useState('');
+  const [price, setPrice] = useState(''); const [img, setImg] = useState('');
+  const [editId, setEditId] = useState<string | null>(null);
+
+  // Form State (Booking Manual)
+  const [bPropId, setBPropId] = useState(''); const [bName, setBName] = useState('');
+  const [bPhone, setBPhone] = useState(''); const [bIn, setBIn] = useState(''); const [bOut, setBOut] = useState('');
 
   useEffect(() => {
-    if (isLoggedIn) fetchProperties()
+    if (isLoggedIn) { fetchData() }
   }, [isLoggedIn])
 
-  const fetchProperties = async () => {
-    const { data } = await supabase.from('properties').select('*').order('created_at', { ascending: false })
-    if (data) setProperties(data)
+  const fetchData = async () => {
+    const { data: p } = await supabase.from('properties').select('*').order('created_at', { ascending: false })
+    const { data: b } = await supabase.from('bookings').select('*, properties(name)').order('check_in', { ascending: true })
+    if (p) setProperties(p)
+    if (b) setBookings(b)
   }
 
   const handleLogin = (e: React.FormEvent) => {
@@ -30,41 +38,30 @@ export default function AdminPage() {
     else alert('Password Salah!')
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-
-    const payload = { name, location, price_per_night: parseFloat(price), image_url: imageUrl }
-
-    if (editId) {
-      // PROSES EDIT
-      await supabase.from('properties').update(payload).eq('id', editId)
-      alert('Berjaya dikemaskini!')
-    } else {
-      // PROSES TAMBAH BARU
-      await supabase.from('properties').insert([payload])
-      alert('Berjaya ditambah!')
-    }
-
-    setLoading(false)
-    setEditId(null)
-    setName(''); setLocation(''); setPrice(''); setImageUrl('')
-    fetchProperties()
+  // LOGIK HOMESTAY
+  const submitHomestay = async (e: React.FormEvent) => {
+    e.preventDefault(); setLoading(true)
+    const payload = { name, location: loc, price_per_night: parseFloat(price), image_url: img }
+    if (editId) { await supabase.from('properties').update(payload).eq('id', editId) }
+    else { await supabase.from('properties').insert([payload]) }
+    setName(''); setLoc(''); setPrice(''); setImg(''); setEditId(null);
+    setLoading(false); fetchData()
   }
 
-  const handleEdit = (item: any) => {
-    setEditId(item.id)
-    setName(item.name)
-    setLocation(item.location)
-    setPrice(item.price_per_night.toString())
-    setImageUrl(item.image_url || '')
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+  // LOGIK BOOKING
+  const submitBooking = async (e: React.FormEvent) => {
+    e.preventDefault(); setLoading(true)
+    await supabase.from('bookings').insert([{ 
+      property_id: bPropId, customer_name: bName, phone_number: bPhone, check_in: bIn, check_out: bOut 
+    }])
+    setBName(''); setBPhone(''); setBIn(''); setBOut('');
+    setLoading(false); fetchData(); alert('Booking berjaya direkod!')
   }
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Betul ke nak padam homestay ni?')) {
-      await supabase.from('properties').delete().eq('id', id)
-      fetchProperties()
+  const deleteItem = async (table: string, id: string) => {
+    if (confirm('Confirm padam?')) {
+      await supabase.from(table).delete().eq('id', id)
+      fetchData()
     }
   }
 
@@ -74,57 +71,91 @@ export default function AdminPage() {
         <form onSubmit={handleLogin} style={{ backgroundColor: '#fff', padding: '30px', borderRadius: '20px', width: '100%', maxWidth: '400px' }}>
           <h2 style={{ textAlign: 'center' }}>Admin Login 🔐</h2>
           <input type="password" placeholder="Password" style={inputStyle} value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} />
-          <button type="submit" style={{ ...btnStyle, width: '100%', marginTop: '15px' }}>Masuk</button>
+          <button type="submit" style={btnStyle}>Masuk</button>
         </form>
       </div>
     )
   }
 
   return (
-    <div style={{ backgroundColor: '#f8fafc', minHeight: '100vh', padding: '30px 20px', fontFamily: 'sans-serif' }}>
-      <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-        
-        <h1 style={{ fontSize: '24px', marginBottom: '10px' }}>{editId ? '📝 Edit Homestay' : '➕ Tambah Homestay'}</h1>
-        
-        {/* FORM SECTION */}
-        <form onSubmit={handleSubmit} style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '20px', marginBottom: '40px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-          <input type="text" placeholder="Nama Homestay" style={inputStyle} value={name} onChange={(e) => setName(e.target.value)} required />
-          <input type="text" placeholder="Lokasi" style={inputStyle} value={location} onChange={(e) => setLocation(e.target.value)} required />
-          <input type="number" placeholder="Harga/Malam" style={inputStyle} value={price} onChange={(e) => setPrice(e.target.value)} required />
-          <input type="text" placeholder="Link Gambar" style={inputStyle} value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
-          
-          <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-            <button type="submit" disabled={loading} style={{ ...btnStyle, flex: 2 }}>
-              {loading ? 'Sabar...' : editId ? 'Kemaskini Data' : 'Simpan Homestay'}
-            </button>
-            {editId && (
-              <button type="button" onClick={() => { setEditId(null); setName(''); setLocation(''); setPrice(''); setImageUrl('') }} style={{ ...btnStyle, backgroundColor: '#64748b', flex: 1 }}>Batal</button>
-            )}
-          </div>
-        </form>
+    <div style={{ backgroundColor: '#f8fafc', minHeight: '100vh', fontFamily: 'sans-serif', paddingBottom: '100px' }}>
+      {/* TABS NAVIGATION */}
+      <div style={{ display: 'flex', backgroundColor: '#fff', borderBottom: '1px solid #e2e8f0', position: 'sticky', top: 0, zIndex: 10 }}>
+        <button onClick={() => setActiveTab('homestays')} style={{ ...tabBtn, borderBottom: activeTab === 'homestays' ? '3px solid #2563eb' : 'none' }}>🏠 Homestay</button>
+        <button onClick={() => setActiveTab('bookings')} style={{ ...tabBtn, borderBottom: activeTab === 'bookings' ? '3px solid #2563eb' : 'none' }}>📅 Tempahan</button>
+      </div>
 
-        {/* LIST SECTION (Calendar/Manage) */}
-        <h2 style={{ fontSize: '20px', marginBottom: '15px' }}>Urus Homestay Anda</h2>
-        <div style={{ display: 'grid', gap: '15px' }}>
-          {properties.map((item) => (
-            <div key={item.id} style={{ backgroundColor: '#fff', padding: '15px', borderRadius: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #e2e8f0' }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '16px' }}>{item.name}</h3>
-                <p style={{ margin: 0, fontSize: '12px', color: '#64748b' }}>RM{item.price_per_night}/malam</p>
-              </div>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button onClick={() => handleEdit(item)} style={{ backgroundColor: '#f59e0b', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '8px', fontSize: '12px' }}>Edit</button>
-                <button onClick={() => handleDelete(item.id)} style={{ backgroundColor: '#ef4444', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '8px', fontSize: '12px' }}>Padam</button>
-              </div>
+      <div style={{ padding: '20px', maxWidth: '600px', margin: '0 auto' }}>
+        
+        {/* TAB 1: URUS HOMESTAY */}
+        {activeTab === 'homestays' && (
+          <div>
+            <form onSubmit={submitHomestay} style={cardStyle}>
+              <h3>{editId ? 'Edit' : 'Tambah'} Homestay</h3>
+              <input placeholder="Nama" style={inputStyle} value={name} onChange={(e) => setName(e.target.value)} required />
+              <input placeholder="Lokasi" style={inputStyle} value={loc} onChange={(e) => setLoc(e.target.value)} required />
+              <input placeholder="Harga/Malam" type="number" style={inputStyle} value={price} onChange={(e) => setPrice(e.target.value)} required />
+              <input placeholder="Link Gambar" style={inputStyle} value={img} onChange={(e) => setImg(e.target.value)} />
+              <button disabled={loading} style={btnStyle}>{editId ? 'Update' : 'Simpan'}</button>
+            </form>
+
+            <div style={{ display: 'grid', gap: '10px' }}>
+              {properties.map(p => (
+                <div key={p.id} style={listItem}>
+                  <div><b>{p.name}</b><br/><small>RM{p.price_per_night}</small></div>
+                  <div style={{ display: 'flex', gap: '5px' }}>
+                    <button onClick={() => {setEditId(p.id); setName(p.name); setLoc(p.location); setPrice(p.price_per_night.toString()); setImg(p.image_url)}} style={smallBtn}>Edit</button>
+                    <button onClick={() => deleteItem('properties', p.id)} style={{ ...smallBtn, backgroundColor: '#ef4444' }}>Hapus</button>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
+        )}
 
-        <button onClick={() => setIsLoggedIn(false)} style={{ marginTop: '40px', width: '100%', background: 'none', border: 'none', color: '#94a3b8' }}>Logout Admin</button>
+        {/* TAB 2: URUS BOOKING */}
+        {activeTab === 'bookings' && (
+          <div>
+            <form onSubmit={submitBooking} style={cardStyle}>
+              <h3>Rekod Booking Manual</h3>
+              <select style={inputStyle} value={bPropId} onChange={(e) => setBPropId(e.target.value)} required>
+                <option value="">-- Pilih Homestay --</option>
+                {properties.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+              <input placeholder="Nama Pelanggan" style={inputStyle} value={bName} onChange={(e) => setBName(e.target.value)} required />
+              <input placeholder="No Phone" style={inputStyle} value={bPhone} onChange={(e) => setBPhone(e.target.value)} required />
+              <div style={{ display: 'flex', gap: '5px' }}>
+                <input type="date" style={inputStyle} value={bIn} onChange={(e) => setBIn(e.target.value)} required />
+                <input type="date" style={inputStyle} value={bOut} onChange={(e) => setBOut(e.target.value)} required />
+              </div>
+              <button disabled={loading} style={btnStyle}>Simpan Booking</button>
+            </form>
+
+            <h3>Senarai Tempahan</h3>
+            {bookings.map(b => (
+              <div key={b.id} style={{ ...listItem, flexDirection: 'column', alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                  <b style={{ color: '#2563eb' }}>{b.properties?.name}</b>
+                  <button onClick={() => deleteItem('bookings', b.id)} style={{ border: 'none', background: 'none', color: 'red' }}>🗑️</button>
+                </div>
+                <div style={{ fontSize: '14px', marginTop: '5px' }}>
+                  👤 {b.customer_name} ({b.phone_number})<br/>
+                  📅 {b.check_in} hingga {b.check_out}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
       </div>
     </div>
   )
 }
 
-const inputStyle = { width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #cbd5e1', marginBottom: '10px', boxSizing: 'border-box' as 'border-box' }
-const btnStyle = { backgroundColor: '#2563eb', color: '#fff', padding: '12px', borderRadius: '10px', border: 'none', fontWeight: 'bold' as 'bold', cursor: 'pointer' }
+// STYLES
+const tabBtn = { flex: 1, padding: '15px', border: 'none', background: 'none', fontWeight: 'bold' as 'bold', cursor: 'pointer' }
+const cardStyle = { backgroundColor: '#fff', padding: '20px', borderRadius: '15px', marginBottom: '30px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }
+const inputStyle = { width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #ddd', marginBottom: '10px', boxSizing: 'border-box' as 'border-box' }
+const btnStyle = { width: '100%', padding: '12px', backgroundColor: '#2563eb', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold' as 'bold' }
+const listItem = { backgroundColor: '#fff', padding: '15px', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', border: '1px solid #eee' }
+const smallBtn = { padding: '6px 10px', backgroundColor: '#f59e0b', color: '#fff', border: 'none', borderRadius: '6px', fontSize: '12px' }
